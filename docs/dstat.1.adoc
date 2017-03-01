@@ -184,7 +184,8 @@ Possible internal stats are::
     disable intermediate updates when delay > 1
 
 --output file::
-    write CSV output to file
+    write CSV output to file. SIGUSR1 will reopen output file at some
+    point before start of the next line.
 
 --profile::
     show profiling statistics when exiting dstat

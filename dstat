@@ -19,7 +19,7 @@
 from __future__ import generators
 
 try:
-    import sys, os, time, sched, re, getopt, fnmatch
+    import sys, os, signal, time, sched, re, getopt, fnmatch
     import types, resource, getpass, glob, linecache
 except KeyboardInterrupt:
     pass
@@ -2533,10 +2533,25 @@ def exit(ret):
 
     sys.exit(ret)
 
+def reopen_outputfile_sig(signalnum, currstackframe):
+    "Sets the reopen_outputfile flag on external signal"
+    global reopen_outputfile
+    reopen_outputfile = True
+
+def reopen_outputfile_check():
+    "Called before line prints to reopen the output file, if signaled"
+    global outputfile, reopen_outputfile
+    if not reopen_outputfile:
+        return
+    reopen_outputfile = False
+    outputfile.close()
+    outputfile = open(op.output, 'a', 0)
+
 def main():
     "Initialization of the program, terminal, internal structures"
     global cpunr, hz, maxint, ownpid, pagesize
-    global ansi, theme, outputfile
+    global ansi, theme
+    global outputfile, reopen_outputfile
     global totlist, inittime
     global update, missed
 
@@ -2588,6 +2603,9 @@ def main():
         outputfile.write(char['sep'].join(header))
         header = ('"Cmdline:"','"dstat %s"' % ' '.join(op.args),'','','','"Date:"','"%s"\n' % time.strftime('%d %b %Y %H:%M:%S %Z', time.localtime()))
         outputfile.write(char['sep'].join(header))
+
+        reopen_outputfile = False
+        signal.signal(signal.SIGUSR1, reopen_outputfile_sig)
 
     ### Create pidfile
     if op.pidfile:
@@ -2807,6 +2825,7 @@ def perform(update):
         ### Print stats
         sys.stdout.write(line + theme['input'])
         if op.output and step == op.delay:
+            reopen_outputfile_check()
             outputfile.write(oline + '\n')
 #            outputfile.flush()
 
